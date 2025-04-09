@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ExamPane</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-SgOJa3DmI69IUzQ2PVdRZhwQ+dy64/BUtbMJw1MZ8t5HZApcHrRKUc4W0kG879m7" crossorigin="anonymous">
+</head>
+<style>
+    .question-tab {
+        cursor: pointer;
+        padding: 10px;
+        margin: 6px;
+        background-color: #f1f1f1;
+        border-radius: 8px;
+        text-align: center;
+        transition: background-color 0.3s;
+    }
+
+    .question-tab:hover {
+        background-color: #e0e0e0;
+    }
+
+    .question-tab.active {
+        background-color: #0d6efd;
+        color: white;
+        font-weight: bold;
+    }
+
+    .correct {
+        background-color: #d4edda;
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    .incorrect {
+        background-color: #f8d7da;
+        padding: 10px;
+        border-radius: 5px;
+    }
+
+    #questionTabs {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 10px;
+        max-height: 500px;
+        overflow-y: auto;
+        padding: 10px;
+    }
+
+    #optionsContainer .form-check {
+        margin-bottom: 10px;
+    }
+
+    #resultContainer {
+        padding-top: 20px;
+    }
+
+    @media (max-width: 768px) {
+        #questionTabs {
+            grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        }
+    }
+</style>
+
+
+<body>
+    <!-- Navbar Starts From Here -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="light">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">ExamPane</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
+                aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item">
+                        <a class="nav-link" aria-current="page" href="#">Home</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#">About</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="exampane.html">Exam</a>
+                    </li>
+                    </li>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <div class="row">
+            <!-- Main Quiz Panel -->
+            <div class="col-sm-8">
+                <h2 id="questionText"> Question Will load here</h2>
+                <form id="quizForm">
+                    <div id="optionsContainer" class="mb-4">
+                        All Options will Display here
+                    </div>
+                </form>
+                <div class="text-center">
+                    <button class="btn btn-secondary me-2" onclick="prevQuestion()">Previous</button>
+                    <button class="btn btn-primary me-2" onclick="nextQuestion()">Next</button>
+                    <button class="btn btn-success" id="submitQuiz" onclick="submitQuiz()">Submit Quiz</button>
+                </div>
+                <div id="resultContainer" class="mt-4"></div>
+            </div>
+            <!-- Sidebar Question Tabs -->
+            <div class="col-sm-4">
+                <h4 class="text-center">Questions</h4>
+                <div id="questionTabs" class="border rounded shadow-sm"></div>
+            </div>
+
+        </div>
+    </div>
+    </div>
+
+
+
+    <script>
+        let questions = [];
+        let currentQuestionIndex = 0;
+        let userAnswers = {};
+
+        fetch('exampane.json')
+            .then(response => response.json())
+            .then(data => {
+                questions = data;
+                renderQuestion();
+                renderQuestionTabs();
+            })
+            .catch(error => alert('Error loading questions: ' + error));
+        function renderQuestion() {
+            const q = questions[currentQuestionIndex];
+            document.getElementById('questionText').textContent = `Q${q.id}: ${q.question}`;
+
+            const optionsContainer = document.getElementById('optionsContainer');
+            optionsContainer.innerHTML = "";
+
+            q.options.forEach((option, index) => {
+                const optionId = `option${index}`;
+                const isChecked = userAnswers[q.id] === option ? 'checked' : '';
+
+                optionsContainer.innerHTML += `
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="option" id="${optionId}" value="${option}" ${isChecked}>
+                        <label class="form-check-label" for="${optionId}">
+                            ${option}
+                        </label>
+                    </div>
+                `;
+            });
+
+            updateActiveTab();
+        }
+
+        function saveAnswer() {
+            const selected = document.querySelector('input[name="option"]:checked');
+            if (selected) {
+                userAnswers[questions[currentQuestionIndex].id] = selected.value;
+            }
+        }
+
+        function nextQuestion() {
+            saveAnswer();
+            if (currentQuestionIndex < questions.length - 1) {
+                currentQuestionIndex++;
+                renderQuestion();
+            }
+        }
+
+        function prevQuestion() {
+            saveAnswer();
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        function goToQuestion(index) {
+            saveAnswer();
+            currentQuestionIndex = index;
+            renderQuestion();
+        }
+
+        function renderQuestionTabs() {
+            const container = document.getElementById('questionTabs');
+            container.innerHTML = "";
+            questions.forEach((q, index) => {
+                const div = document.createElement('div');
+                div.className = 'question-tab';
+                div.textContent = `Q${q.id}`;
+                div.onclick = () => goToQuestion(index);
+                container.appendChild(div);
+            });
+        }
+
+        function updateActiveTab() {
+            const tabs = document.querySelectorAll('.question-tab');
+            tabs.forEach((tab, index) => {
+                tab.classList.toggle('active', index === currentQuestionIndex);
+            });
+        }
+
+        function submitQuiz() {
+            saveAnswer();
+            let score = 0;
+            let resultHTML = "<h3>Quiz Results:</h3>";
+            let resultHTML1 = ""; // For per-question results
+            let resultHTML2 = ""; // For score summary
+
+            document.getElementById("submitQuiz").setAttribute("disabled", "disabled");
+
+
+            questions.forEach((q) => {
+                const userAns = userAnswers[q.id] || "Not Answered";
+                const isCorrect = userAns === q.answer;
+                if (isCorrect) score++;
+
+                resultHTML1 += `
+                    <div class="${isCorrect ? 'correct' : 'incorrect'}">
+                        <strong>Q${q.id}:</strong> ${q.question}<br>
+                        <strong>Your Answer:</strong> ${userAns}<br>
+                        <strong>Correct Answer:</strong> ${q.answer}
+                    </div><br>
+                `;
+            });
+            resultHTML2 += `<h4>Total Score: ${score} / ${questions.length}</h4>`;
+            resultHTML += resultHTML2 + resultHTML1;
+            document.getElementById('resultContainer').innerHTML = resultHTML;
+        }
+
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.5/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-k6d4wzSIapyDyv1kpU366/PK5hCdSbCRGRCMv+eplOQJWyd1fbcAu9OCUj5zNLiq"
+        crossorigin="anonymous"></script>
+</body>
+
+</html>
